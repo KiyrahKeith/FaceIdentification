@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics
 
-dir = "logs/plots"
+dir = "logs"
 
 def reset_directory():
     # If the current directory exists, delete it.
@@ -32,9 +32,6 @@ def reset_directory():
 def plot_to_image(figure):
     """Converts the matplotlib plot specified by 'figure' to a PNG image and
     returns it. The supplied figure is closed and inaccessible after this call."""
-
-
-
     # Save the plot to a PNG in memory.
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
@@ -49,7 +46,6 @@ def plot_to_image(figure):
     return image
 
 def image_grid(name, dataset, class_names):
-    print("Make the image grid")
     """Return a 5x5 grid of the dataset as a matplotlib figure."""
     images, labels = next(iter(dataset))
 
@@ -63,7 +59,7 @@ def image_grid(name, dataset, class_names):
         plt.grid(False)
         plt.imshow(images[i], cmap=plt.cm.binary)
 
-    logdir = dir + "/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    logdir = dir + "/plots/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     file_writer = tf.summary.create_file_writer(logdir)
 
     # Convert to image and log
@@ -140,10 +136,26 @@ def sample_augmentations(image, name):
         plt.grid(False)
         plt.imshow(images[i], cmap=plt.cm.binary)
 
-    logdir = dir + "/" + name + "_" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    logdir = dir + "/plots/" + name + "_" + datetime.now().strftime("%Y%m%d-%H%M%S")
     file_writer = tf.summary.create_file_writer(logdir)
 
     # Convert to image and log
     with file_writer.as_default():
         tf.summary.image("Sample Augmentations", plot_to_image(figure), step=0)
+
+
+def augment(image, label):
+    # Random brightness
+    # image = tf.image.random_brightness(image, max_delta=0.05)
+
+    # Random contrast
+    # image = tf.image.random_contrast(image, lower=0.1, upper=0.2)
+
+    # Random contrast
+    image = tf.image.random_saturation(image, lower=0.1, upper=0.2)
+
+    # Horizontal flip
+    image = tf.image.random_flip_left_right(image)  # 50%
+
+    return image, label
 

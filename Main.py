@@ -5,57 +5,31 @@ from tensorflow.keras import layers
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn import metrics
+from sklearn.model_selection import KFold
 import TensorBoard_Utils as utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 utils.reset_directory()  # Clear the previous TensorBoard log directory
 
-# Initialize parameters
-img_height = 128
-img_width = 128
+# Initialize parameters ###############################################################################################
+img_size = 128  # The width and height dimensions of the image
 batch_size = 32
-epochs = 10
-num_classes = 24  # There are 24 individual chimps
+epochs = 5
+num_classes = 24  # There are 24 individual chimps in the C-Zoo dataset
+k_fold = 5  # The number of folds for the k-fold cross validation
 
+# Running parameters (parameters that determine which pieces of the program will be completed during each run)
 
-model = tf.keras.Sequential([
-    tf.keras.layers.Rescaling(1./255),
-    tf.keras.layers.Conv2D(32, 3, activation='relu'),
-    tf.keras.layers.MaxPooling2D(),
-    tf.keras.layers.Conv2D(32, 3, activation='relu'),
-    tf.keras.layers.MaxPooling2D(),
-    tf.keras.layers.Conv2D(32, 3, activation='relu'),
-    tf.keras.layers.MaxPooling2D(),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dense(num_classes)
-])
+# An array of boolean values that indicate which elements of TensorBoard will be computed during the current run.
+myTensorBoard = [1,  # Image Augmentation Grid
+                 ]
 
-# Create model layers
-#model2 = keras.Sequential([
-#    layers.Input((28, 28, 1)),
-#    layers.Conv2D(16, 3, padding='same'),
-#    layers.Conv2D(32, 3, padding='same'),
-#    layers.MaxPooling2D(),
-#    layers.Flatten(),
-#    layers.Dense(10),
-#])
+willTrain = True  # willTrain is True if the model will train and evaluate the CNN
+willAugment = False  #willAugment is True if the training set will be augmented during training.
+# #####################################################################################################################
 
-def augment(image, label):
-    # Random brightness
-    # image = tf.image.random_brightness(image, max_delta=0.05)
-
-    # Random contrast
-    # image = tf.image.random_contrast(image, lower=0.1, upper=0.2)
-
-    # Random contrast
-    image = tf.image.random_saturation(image, lower=0.1, upper=0.2)
-
-    # Horizontal flip
-    image = tf.image.random_flip_left_right(image)  # 50%
-
-    return image, label
 
 # Load dataset from directory
 train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -64,20 +38,20 @@ train_ds = tf.keras.preprocessing.image_dataset_from_directory(
     label_mode="int",
     color_mode='rgb',
     batch_size=batch_size,
-    image_size=(img_height, img_width),
+    image_size=(img_size, img_size),
     shuffle=True,
     seed=123,
     validation_split=0.1,
     subset="training",
 )
 
-ds_validation = tf.keras.preprocessing.image_dataset_from_directory(
+validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
     'Dataset/',
     labels='inferred',
     label_mode="int",
     color_mode='rgb',
     batch_size=batch_size,
-    image_size=(img_height, img_width),
+    image_size=(img_size, img_size),
     shuffle=True,
     seed=123,
     validation_split=0.1,
@@ -88,18 +62,89 @@ ds_validation = tf.keras.preprocessing.image_dataset_from_directory(
 class_names = train_ds.class_names
 # images, labels = next(iter(train_ds))
 train_ds = train_ds.map(utils.normalize_images)
-# train_ds = train_ds.map(augment)
+validation_ds = validation_ds.map(utils.normalize_images)
+
+# Store the datasets in cache to reduce loading time.
+AUTOTUNE = tf.data.AUTOTUNE
+train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
+validation_ds = validation_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+# Configure model ########################################################################
+# Create model layers
+model = keras.Sequential([
+    layers.Input((img_size, img_size, 3)),
+    layers.Conv2D(16, 3, padding='same'),
+    layers.Conv2D(32, 3, padding='same'),
+    layers.MaxPooling2D(),
+    layers.Flatten(),
+    layers.Dense(num_classes),
+])
+
+# Set training settings
+model.compile(
+    optimizer=keras.optimizers.legacy.Adam(),
+    loss=[keras.losses.SparseCategoricalCrossentropy(from_logits=True)],
+    metrics=["accuracy"],
+)
+
+
+# K-Fold Cross-Validation ########################################################################
+if willTrain:
+    X = []
+    Y = []
+    for images, labels in train_ds:
+        X.append(images.numpy())
+        Y.append(labels.numpy())
+
+    X = np.concatenate(X)
+    Y = np.concatenate(Y)
+    kf = KFold(k_fold, shuffle=True, random_state=42)
+    oos_y = []
+    oos_pred = []
+
+    fold = 0
+    for train, test in kf.split(X, Y):
+        fold += 1
+        print(f"Fold #{fold}")
+        images, labels = next(iter(train_ds))
+
+        x_train = images[train]
+        y_train = labels[train]
+        x_test = images[test]
+        y_test = labels[test]
+
+        tensorboard_callback = keras.callbacks.TensorBoard(
+            log_dir=utils.dir, histogram_freq=1,
+        )
+
+        model.fit((x_train, y_train),
+                  epochs=epochs,
+                  validation_data=(x_test, y_test),
+                  callbacks=[tensorboard_callback],
+                  verbose=2,
+                  )
+
+if willAugment:
+    train_ds = train_ds.map(utils.augment)  # Augment the training set
 
 # Create a sample grid of the training set images and load it into TensorBoard
 # utils.image_grid("Training Set", train_ds, class_names)
 
-images, labels = next(iter(train_ds))
-
-for i in range(10):
-    print("i: ", i)
-    utils.sample_augmentations(images[i], str(i))
 
 
+if myTensorBoard[0]:  # Only create this TensorBoard section if it is activated at the top of this file.
+    images, labels = next(iter(train_ds))
+    for i in range(5):
+        utils.sample_augmentations(images[i], str(i))
+
+# Default model.fit parameters
+'''
+model.fit(train_ds,
+                  epochs=epochs,
+                  validation_data=validation_ds,
+                  callbacks=[tensorboard_callback],
+                  verbose=2,
+                  )'''
 
 '''
 # Show a sample of one of the images
@@ -122,57 +167,8 @@ def augment(x, y):
     return image, y
 
 # train_ds = train_ds.map(augment)
-
-
-# Store the datasets in cache to reduce loading time.
-AUTOTUNE = tf.data.AUTOTUNE
-train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
-ds_validation = ds_validation.cache().prefetch(buffer_size=AUTOTUNE)
-
-
-
-# Set training settings
-model.compile(
-     optimizer=keras.optimizers.legacy.Adam(),
-     loss=[
-         keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-     ],
-     metrics=["accuracy"],
- )
 '''
 
 
-'''
-model.fit(train_ds, epochs=epochs, verbose=2)
-
-history = model.fit(train_ds,
-                    epochs=epochs,
-                    validation_data=ds_validation)
-
-# Plot training history
-plt.figure(figsize=(12, 6))
-
-
-# Plot training & validation loss values
-plt.subplot(1, 2, 1)
-plt.plot(history.history['loss'], label='Training loss')
-plt.plot(history.history['val_loss'], label='Validation loss')
-plt.title('Training and Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-
-# Plot training & validation accuracy values
-plt.subplot(1, 2, 2)
-plt.plot(history.history['accuracy'], label='Training accuracy')
-plt.plot(history.history['val_accuracy'], label='Validation accuracy')
-plt.title('Training and Validation Accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.legend()
-
-plt.tight_layout()
-plt.show()
-'''
 
 
