@@ -45,6 +45,7 @@ def plot_to_image(figure):
     image = tf.expand_dims(image, 0)
     return image
 
+
 def image_grid(name, dataset, class_names):
     """Return a 5x5 grid of the dataset as a matplotlib figure."""
     images, labels = next(iter(dataset))
@@ -68,9 +69,10 @@ def image_grid(name, dataset, class_names):
 
 
 def normalize_images(image, label):
-    # Normalize images to [0, 1]
+    # Normalize images float32 values in the range [0, 1]
     image = tf.cast(image, tf.float32) / 255.0
     return image, label
+
 
 def sample_augmentations(image, name):
     # Create a figure to contain the plot.
@@ -159,3 +161,44 @@ def augment(image, label):
 
     return image, label
 
+
+# Confusion Matrix implementation is used from Aladdin Persson
+# (https://github.com/aladdinpersson/Machine-Learning-Collection/tree/master/ML/TensorFlow/Basics/tutorial17-tensorboard)
+def get_confusion_matrix(y_labels, logits, class_names):
+    preds = np.argmax(logits, axis=1)
+    cm = sklearn.metrics.confusion_matrix(
+        y_labels, preds, labels=np.arange(len(class_names)),
+    )
+
+    return cm
+
+
+def plot_confusion_matrix(cm, class_names):
+    print("Plot confusion matrix")
+    size = len(class_names)
+    figure = plt.figure(figsize=(size, size))
+    # plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+    plt.imshow(cm, interpolation="nearest", cmap=plt.colormaps.get_cmap('Blues'))
+    plt.title("Confusion Matrix")
+
+    indices = np.arange(len(class_names))
+    plt.xticks(indices, class_names, rotation=45)
+    plt.yticks(indices, class_names)
+
+    # Normalize Confusion Matrix
+    cm = np.around(cm.astype("float") / cm.sum(axis=1)[:, np.newaxis], decimals=3,)
+
+    threshold = cm.max() / 2.0
+    for i in range(size):
+        for j in range(size):
+            color = "white" if cm[i, j] > threshold else "black"
+            plt.text(
+                i, j, cm[i, j], horizontalalignment="center", color=color,
+            )
+
+    plt.tight_layout()
+    plt.xlabel("True Label")
+    plt.ylabel("Predicted label")
+
+    cm_image = plot_to_image(figure)
+    return cm_image
