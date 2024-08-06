@@ -9,7 +9,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 img_size = 224  # The width and height dimensions of the image
 batch_size = 32
-epochs = 20
+epochs = 5
 num_classes = 24  # There are 24 individual chimps in the C-Zoo dataset
 validation_split = 0.2
 optimizer = keras.optimizers.legacy.Adam(learning_rate=0.001)
@@ -40,7 +40,7 @@ def badgernet():
 
 
 train_ds, validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
-    'Dataset/',
+    'Datasets/CTai/Chimpanzee/',
     labels='inferred',
     label_mode="int",
     color_mode='rgb',
