@@ -46,37 +46,59 @@ def plot_image_counts_species(species_counts):
     plt.tight_layout()
     plt.show()
 
-def count_images_in_individuals(root_dir):
+def count_images_in_individuals(root_dir, species):
     individual_counts = {}
+    if species == "All species":
+        # Walk through the directory structure and count individuals for all species present
+        for species_folder in os.listdir(root_dir):
+            species_path = os.path.join(root_dir, species_folder)
 
-    # Walk through the directory structure
-    for species in os.listdir(root_dir):
-        species_path = os.path.join(root_dir, species)
+            if os.path.isdir(species_path):
+                # Go through the individual folders inside each species folder
+                for individual in os.listdir(species_path):
+                    individual_path = os.path.join(species_path, individual)
 
-        if os.path.isdir(species_path):
-            # Go through the individual folders inside each species folder
-            for individual in os.listdir(species_path):
-                individual_path = os.path.join(species_path, individual)
+                    if os.path.isdir(individual_path):
+                        # Count all files in the individual folder
+                        image_count = len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
 
-                if os.path.isdir(individual_path):
-                    # Count all files in the individual folder
-                    image_count = len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
-                    # image_count -= 1  # Remove the extra 1 count that includes the folder it is in
+                        # Use the individual folder name as a key, appending the species name to avoid name conflicts
+                        individual_name = f"{individual}"
+                        individual_counts[individual_name] = image_count
+        return individual_counts
 
-                    # Use the individual folder name as a key, appending the species name to avoid name conflicts
-                    individual_name = f"{individual}"
-                    individual_counts[individual_name] = image_count
+    # If a specific species was specified in the parameters
+    species_path = os.path.join(root_dir, species)
+    for individual in os.listdir(species_path):
+        individual_path = os.path.join(species_path, individual)
+
+        if os.path.isdir(individual_path):
+            # Count all files in the individual folder
+            image_count = len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
+
+            # Use the individual folder name as a key, appending the species name to avoid name conflicts
+            individual_name = f"{individual}"
+            individual_counts[individual_name] = image_count
+
     return individual_counts
 
-def plot_image_counts_individuals(individual_counts):
+
+def plot_image_counts_individuals(species="All species"):
+    individual_counts = count_images_in_individuals(root_directory, species)
     sorted_individuals = sorted(individual_counts.items(), key=lambda x: x[0])
     individuals, counts = zip(*sorted_individuals)  # Unpack sorted data
 
     plt.figure(figsize=(12, 8))
-    bars = plt.barh(individuals, counts, color='skyblue')
+    bars = plt.barh(individuals, counts, color='skyblue', height=0.8)
+    # Set the y-axis limits to reduce whitespace
+    plt.ylim(-0.5, len(individuals) - 0.5)
+
+    # Remove the y-axis labels (individual names)
+    plt.yticks([])
+
     plt.ylabel('Individual')
     plt.xlabel('Number of Images')
-    plt.title('Number of Images per Individual')
+    plt.title('Number of Images per Individual ('+species+')')
 
     # Annotate each bar with its value
     for bar in bars:
@@ -137,16 +159,15 @@ def plot_species_averages(species_averages):
 # Main script
 if __name__ == "__main__":
     # Set the root directory path here
-    root_directory = 'Datasets/CTai/'
+    root_directory = 'Datasets/AFD/'
 
     # Number of images per species ------------------------------------
-    species_counts = count_images_in_species(root_directory)
-    plot_image_counts_species(species_counts)
+    # species_counts = count_images_in_species(root_directory)
+    # plot_image_counts_species(species_counts)
 
     # Number of images per individual --------------------------------
-    individual_counts = count_images_in_individuals(root_directory)
-    plot_image_counts_individuals(individual_counts)
+    plot_image_counts_individuals("Rhinopithecus roxellanae")
 
     # Average number of images per individual, grouped with the x-axis being each species
-    species_averages = calculate_average_images_per_individual(root_directory)
-    plot_species_averages(species_averages)
+    # species_averages = calculate_average_images_per_individual(root_directory)
+    # plot_species_averages(species_averages)
