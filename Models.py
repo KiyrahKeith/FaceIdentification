@@ -11,10 +11,13 @@ import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import KFold
 import TensorBoard_Utils as utils
+from keras.callbacks import CSVLogger
 from keras.applications import (VGG16, ResNet50, InceptionV3)
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess
 from keras.applications.resnet import preprocess_input as resnet_preprocess
 from keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
+
+import Utils
 
 # Stores the information for each transfer model available
 # Key = model name, Value = (Model loading name, image size, dataset preprocessing function)
@@ -82,13 +85,13 @@ def preprocess_data(model_name, train_ds, validation_ds, num_classes):
 
 
 def preprocess_data_util(image, label, preprocess, img_size):
-    image = tf.image.resize(image, img_size)
+    image = tf.image.resize(image, [img_size, img_size])
     image = preprocess(image)
     return image, label
 
 
 # Returns a new transfer-learning model
-def create_model(model_name, learning_rate, num_classes, optimizer):
+def create_model(model_name, learning_rate, num_classes, optimizer, metric):
     model = Sequential()
     model.add(get_transfer_model("ResNet50"))
     model.add(keras.layers.GlobalAveragePooling2D())
@@ -105,10 +108,19 @@ def create_model(model_name, learning_rate, num_classes, optimizer):
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer(learning_rate=learning_rate),
-                  metrics=['accuracy'])
+                  metrics=metric)
     return model
 
 
-def train_model(model, train_ds, validation_ds, batch_size, epochs, verbose):
-    return model.fit(train_ds, batch_size=batch_size, epochs=epochs, verbose=verbose, validation_data=validation_ds)
+def train_model(model, train_ds, validation_ds, batch_size, epochs, verbose, record_name, record_data):
+    # Prepare the csv_logger to save model metrics to a file
+    csv_logger = Utils.CustomCSVLogger('results.csv', append=True, separator=",", record_name=record_name, record_data=record_data)
+    return model.fit(train_ds,
+                     batch_size=batch_size,
+                     epochs=epochs,
+                     verbose=verbose,
+                     validation_data=validation_ds,
+                     callbacks=[csv_logger])
+
+
 
