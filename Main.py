@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import KFold
-import TensorBoard_Utils as utils
+import TensorBoard_Utils as TB_Utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-utils.reset_directory()  # Clear the previous TensorBoard log directory
+TB_Utils.reset_directory()  # Clear the previous TensorBoard log directory
 
 # Initialize parameters ###############################################################################################
 img_size = 224  # The width and height dimensions of the image
@@ -49,7 +49,7 @@ def preprocess_data(X, Y):
 if willTrain == 1:
     # For normal training, load the training data WITH the validation set
     train_ds, validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
-        'CZoo/Chimpanzee/',
+        'Datasets/CZoo/Chimpanzee/',
         labels='inferred',
         label_mode="int",
         color_mode='rgb',
@@ -77,8 +77,8 @@ if willTrain == 2:
 # Get the list of class names
 class_names = train_ds.class_names
 # images, labels = next(iter(train_ds))
-train_ds = train_ds.map(utils.normalize_images)
-validation_ds = validation_ds.map(utils.normalize_images)
+train_ds = train_ds.map(TB_Utils.normalize_images)
+validation_ds = validation_ds.map(TB_Utils.normalize_images)
 
 # Store the datasets in cache to reduce loading time.
 AUTOTUNE = tf.data.AUTOTUNE
@@ -88,14 +88,14 @@ validation_ds = validation_ds.cache().prefetch(buffer_size=AUTOTUNE)
 # Configure model ########################################################################
 # Create model layers
 if willAugment:
-    train_ds = train_ds.map(utils.augment)  # Augment the training set
+    train_ds = train_ds.map(TB_Utils.augment)  # Augment the training set
 
 
 # Normal training
 if willTrain == 1:
     # Use callbacks to plot accuracy and loss into TensorBoard
     tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=utils.dir, histogram_freq=1,
+        log_dir=TB_Utils.dir, histogram_freq=1,
     )
 
     x_train, y_train = next(iter(train_ds))

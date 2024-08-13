@@ -79,7 +79,7 @@ def sample_augmentations(image, name):
     labels = [
         "Original",
         "Hue",
-        "Horizontal Flip",
+        "Hue",
         "Brightness",
         "Brightness",
         "Brightness",
@@ -89,9 +89,9 @@ def sample_augmentations(image, name):
         "Saturation",
         "Saturation",
         "Saturation",
-        "B+S",
-        "B+H",
-        "B+C"
+        #"B+S",
+        #"B+H",
+        #"B+C"
     ]
 
     combo1 = tf.image.random_brightness(image, max_delta=0.5, seed=12345)
@@ -103,36 +103,38 @@ def sample_augmentations(image, name):
     combo3 = tf.image.random_brightness(image, max_delta=0.5, seed=12345)
     combo3 = tf.image.random_contrast(combo3, lower=1.9, upper=2.0, seed=12345)
 
+    rotate = keras.layers.RandomRotation(0.10)
+
     images = [
         image,
-        tf.image.random_hue(image, max_delta=0.4, seed=12345),
-        tf.image.random_flip_left_right(image),
-        tf.image.random_brightness(image, max_delta=0.15, seed=12345),
-        tf.image.random_brightness(image, max_delta=0.3, seed=12345),
-        tf.image.random_brightness(image, max_delta=0.5, seed=12345),
-        tf.image.random_contrast(image, lower=0.2, upper=0.3, seed=12345),
-        tf.image.random_contrast(image, lower=1.9, upper=2.0, seed=12345),
-        tf.image.random_contrast(image, lower=2.5, upper=2.6, seed=12345),
-        tf.image.random_saturation(image, lower=0.01, upper=0.1, seed=12345),
-        tf.image.random_saturation(image, lower=0.2, upper=0.4, seed=12345),
-        tf.image.random_saturation(image, lower=0.8, upper=0.9, seed=12345),
-        combo1,
-        combo2,
-        combo3
+        tf.image.random_hue(image, max_delta=0.3),
+        tf.image.random_hue(image, max_delta=0.5),
+        tf.image.random_brightness(image, max_delta=0.15),
+        tf.image.random_brightness(image, max_delta=0.3),
+        tf.image.random_brightness(image, max_delta=0.5),
+        tf.image.random_contrast(image, lower=0.2, upper=0.3),
+        tf.image.random_contrast(image, lower=1.9, upper=2.0),
+        tf.image.random_contrast(image, lower=2.5, upper=2.6),
+        tf.image.random_saturation(image, lower=0.01, upper=0.1),
+        tf.image.random_saturation(image, lower=0.2, upper=0.4),
+        tf.image.random_saturation(image, lower=0.8, upper=0.9),
+        #rotate(image),
+        #rotate(image),
+        #rotate(image)
     ]
 
     images = [tf.clip_by_value(img, 0.0, 1.0) for img in images]
 
     # Calculate the mean brightness value for each image, round to 3 decimal places, and append it onto that image's label.
-    for i, img in enumerate(images):
-        img_np = img.numpy()
-        mean_brightness = round(np.mean(img_np), 3)
-        labels[i] += " (" + str(mean_brightness) + ")"
+    #for i, img in enumerate(images):
+        # img_np = img.numpy()
+        # mean_brightness = round(np.mean(img_np), 3)
+        # labels[i] += " (" + str(mean_brightness) + ")" # Append the mean brightness label onto each image label
 
     figure = plt.figure(figsize=(9, 9))
-    for i in range(15):
+    for i in range(12):
         # Start next subplot.
-        plt.subplot(5, 3, i + 1, title=labels[i])
+        plt.subplot(4, 3, i + 1, title=labels[i])
         plt.xticks([])
         plt.yticks([])
         plt.grid(False)

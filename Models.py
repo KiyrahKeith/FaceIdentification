@@ -30,7 +30,7 @@ models_dict = {
 
 # Load dataset from a directory and split into training and validation data
 def load_data(directory, batch_size, validation_split):
-    train_ds, validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    train_ds, validation_ds = tf.keras.utils.image_dataset_from_directory(
         directory,
         labels='inferred',
         label_mode="int",
@@ -41,6 +41,9 @@ def load_data(directory, batch_size, validation_split):
         validation_split=validation_split,
         subset="both",
     )
+
+    train_ds = train_ds.map(utils.normalize_images)
+    validation_ds = validation_ds.map(utils.normalize_images)
 
     print("Data load successful")
     return train_ds, validation_ds
@@ -92,8 +95,10 @@ def preprocess_data_util(image, label, preprocess, img_size):
 
 # Returns a new transfer-learning model
 def create_model(model_name, learning_rate, num_classes, optimizer, metric):
+    # This architecture was obtained from
+    # https://hamdi-ghorbel78.medium.com/a-guide-to-transfer-learning-with-keras-using-resnet50-453934a7b7dc
     model = Sequential()
-    model.add(get_transfer_model("ResNet50"))
+    model.add(get_transfer_model(model_name))
     model.add(keras.layers.GlobalAveragePooling2D())
     model.add(keras.layers.BatchNormalization())
     model.add(keras.layers.Dense(256, activation='relu'))
@@ -114,13 +119,23 @@ def create_model(model_name, learning_rate, num_classes, optimizer, metric):
 
 def train_model(model, train_ds, validation_ds, batch_size, epochs, verbose, record_name, record_data):
     # Prepare the csv_logger to save model metrics to a file
-    csv_logger = Utils.CustomCSVLogger('results.csv', append=True, separator=",", record_name=record_name, record_data=record_data)
+    csv_logger = Utils.CustomCSVLogger('results.csv',
+                                       append=True,
+                                       separator=",",
+                                       record_name=record_name,
+                                       record_data=record_data)
+
+    log_dir = os.path.join(utils.dir, record_name)
+    tensorboard_callback = keras.callbacks.TensorBoard(
+        log_dir=log_dir, histogram_freq=1,
+    )
+
     return model.fit(train_ds,
                      batch_size=batch_size,
                      epochs=epochs,
                      verbose=verbose,
                      validation_data=validation_ds,
-                     callbacks=[csv_logger])
+                     callbacks=[csv_logger, tensorboard_callback])
 
 
 
