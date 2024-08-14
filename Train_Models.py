@@ -2,16 +2,12 @@ import os
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
+from keras.optimizers import SGD, Adam, RMSprop
 import Binta_Models
 import TensorBoard_Utils as utils
 import Models as models
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-utils.reset_directory()  # Clear the previous TensorBoard log directory
-if os.path.exists('results.csv'):  # Clear the previous results.csv file
-    os.remove('results.csv')
 
 # Stores the information for each dataset currently available
 # key = dataset name, value = (directory, number of classes)
@@ -25,21 +21,19 @@ dataset_dict = {
 dataset = "CZoo"
 directory, num_classes = dataset_dict[dataset]
 batch_size = 32
-epochs = 60
+epochs = 5
 validation_split = 0.1
 learning_rate = 0.001
 optimizer = keras.optimizers.legacy.Adam
 loss = keras.losses.SparseCategoricalCrossentropy()
-metrics = ['accuracy',
-           keras.metrics.TopKCategoricalAccuracy(k=5, name="top5")]
+metrics = ['accuracy']
 # --------------------------------------------------------------------------------------------------------------
 
 
 def train():
-    # for transfer_model in models.models_dict.keys():
     transfer_model = "InceptionV3"
     # Preprocess the data based on what transfer model is being used
-    train, validate = models.preprocess_data(transfer_model, train_ds, validation_ds, num_classes)
+    train, validate = models.preprocess_data(transfer_model, train_ds, validation_ds)
 
     # Create the model
     model = models.create_model(transfer_model,
@@ -56,38 +50,90 @@ def train():
 
     # Train the model
     models.train_model(model,
-                        train_ds=train,
-                        validation_ds=validate,
-                        batch_size=batch_size,
-                        epochs=epochs,
-                        verbose=2,
-                        record_name=record_name,
-                        record_data=record_data)
+                       train_ds=train,
+                       validation_ds=validate,
+                       batch_size=batch_size,
+                       epochs=epochs,
+                       verbose=2,
+                       record_name=record_name,
+                       record_data=record_data)
+
+    predict = model.predict(validate, batch_size=batch_size, verbose=2)
+    print(f"Predict shape: {tf.shape(predict)}")
+
+
+# Trains multiple models to systematically test various hyperparameters. Training results are stored in results.csv
+def grid_search():
+    # Search parameters
+    learning_rates = [0.1, 0.01, 0.001, 0.0001]
+    optimizers = [SGD, Adam, RMSprop]
+    batch_sizes = [16, 32, 64]
+    # dropouts = [0.3, 0.4, 0.5]
+    epochs = 60
+
+    # Test each transfer model architecture
+    for transfer_model in models.models_dict.keys():
+        # Preprocess the data based on what transfer model is being used
+        train, validate = models.preprocess_data(transfer_model, train_ds, validation_ds)
+
+        for batch_size in batch_sizes:
+            train = train.unbatch().batch(batch_size)
+            validate = validate.unbatch().batch(batch_size)
+
+            for opt in optimizers:
+                for lr in learning_rates:
+                    # Create the model
+                    model = models.create_model(transfer_model,
+                                                learning_rate=lr,
+                                                num_classes=num_classes,
+                                                optimizer=opt,
+                                                metric=metrics)
+
+                    # Set up the training cycle information to be recorded in results.csv
+                    record_name = transfer_model + ", " + opt()._name + ", lr: " + str(lr) + ", bs: " + str(batch_size)
+                    record_data = {'learning_rate': lr}
+
+                    print("Train ", record_name)
+
+                    # Train the model
+                    models.train_model(model,
+                                       train_ds=train,
+                                       validation_ds=validate,
+                                       batch_size=batch_size,
+                                       epochs=epochs,
+                                       verbose=1,
+                                       record_name=record_name,
+                                       record_data=record_data)
 
 
 # Trains the models and saves the results
 def train_binta_models():
-    train, validate = models.preprocess_data("VGG16", train_ds, validation_ds, num_classes)
+    train, validate = models.preprocess_data("ResNet50", train_ds, validation_ds)
 
-    model = Binta_Models.vgg16_3(num_classes=num_classes)
+    model = Binta_Models.resnet_type1(num_classes=num_classes)
 
     # Set up the training cycle information to be recorded in results.csv
-    record_name = "vgg16_3"
+    record_name = "resnet_type1"
     record_data = {'learning_rate': 1e-4, 'batch_size': 32}
 
     # Train the model
-    history = models.train_model(model,
-                                 train_ds=train,
-                                 validation_ds=validate,
-                                 batch_size=32,
-                                 epochs=100,
-                                 verbose=2,
-                                 record_name=record_name,
-                                 record_data=record_data)
+    models.train_model(model,
+                       train_ds=train,
+                       validation_ds=validate,
+                       batch_size=32,
+                       epochs=100,
+                       verbose=2,
+                       record_name=record_name,
+                       record_data=record_data)
 
 
 if __name__ == "__main__":
+    utils.reset_directory()  # Clear the previous TensorBoard log directory
+    if os.path.exists('results.csv'):  # Clear the previous results.csv file
+        os.remove('results.csv')
+
     # Load and normalize the dataset
     train_ds, validation_ds = models.load_data(directory, batch_size, validation_split)
 
-    train()
+    grid_search()
+    # train()

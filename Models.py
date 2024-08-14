@@ -11,20 +11,27 @@ import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import KFold
 import TensorBoard_Utils as utils
-from keras.callbacks import CSVLogger
-from keras.applications import (VGG16, ResNet50, InceptionV3)
+import Callbacks
+from keras.applications import (VGG16, ResNet50, InceptionV3, InceptionResNetV2, MobileNetV2, DenseNet201, Xception)
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess
 from keras.applications.resnet import preprocess_input as resnet_preprocess
 from keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
+from keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnestv2_preprocess
+from keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
+from keras.applications.densenet import preprocess_input as densenet_preprocess
+from keras.applications.xception import preprocess_input as xception_preprocess
 
-import Utils
 
 # Stores the information for each transfer model available
 # Key = model name, Value = (Model loading name, image size, dataset preprocessing function)
 models_dict = {
     "VGG16": (VGG16, 224, vgg16_preprocess),
     "ResNet50": (ResNet50, 224, resnet_preprocess),
-    "InceptionV3": (InceptionV3, 224, inceptionv3_preprocess)
+    "InceptionV3": (InceptionV3, 224, inceptionv3_preprocess),
+    "InceptionResNetV2": (InceptionResNetV2, 224, inceptionresnestv2_preprocess),
+    "MobileNetV2": (MobileNetV2, 224, mobilenetv2_preprocess),
+    "DenseNet201": (DenseNet201, 224, densenet_preprocess),
+    "Xception": (Xception, 299, xception_preprocess)
 }
 
 
@@ -68,7 +75,7 @@ def get_transfer_model(model_name):
 
 
 # Preprocess the training and validation set based on the transfer-learning model used
-def preprocess_data(model_name, train_ds, validation_ds, num_classes):
+def preprocess_data(model_name, train_ds, validation_ds):
     if model_name in models_dict:
         model_class, img_size, preprocess = models_dict[model_name]
         # Apply preprocessing to both the training and validation datasets
@@ -119,7 +126,7 @@ def create_model(model_name, learning_rate, num_classes, optimizer, metric):
 
 def train_model(model, train_ds, validation_ds, batch_size, epochs, verbose, record_name, record_data):
     # Prepare the csv_logger to save model metrics to a file
-    csv_logger = Utils.CustomCSVLogger('results.csv',
+    csv_logger = Callbacks.CustomCSVLogger('results.csv',
                                        append=True,
                                        separator=",",
                                        record_name=record_name,

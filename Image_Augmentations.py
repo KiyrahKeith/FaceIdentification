@@ -60,7 +60,6 @@ def augment():
     class_names = dataset.class_names
     dataset = dataset.map(TB_Utils.normalize_images)
 
-    # images, labels = next(iter(dataset))
     i = 0
     for images, labels in dataset:
         for image, label in zip(images, labels):
