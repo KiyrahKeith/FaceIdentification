@@ -3,29 +3,21 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 # Obtains statistics about properties of any provided datasets and produces corresponding charts
-def count_images_in_species(root_dir):
-    species_counts = {}
-    total_count = 0
+def count_images_in_species(root_dir, extensions=('.png', '.jpg', '.jpeg')):
+    species_counts = defaultdict(int)  # Dictionary to hold counts for each species
+    total_images = 0
 
-    # Walk through the directory structure
-    for species in os.listdir(root_dir):
-        species_path = os.path.join(root_dir, species)
+    # Walk through the entire directory structure
+    for dirpath, _, filenames in os.walk(root_dir):
+        image_files = [f for f in filenames if f.lower().endswith(extensions)]
+        num_images = len(image_files)
+        total_images += num_images
 
-        if os.path.isdir(species_path):
-            image_count = 0
+        # Determine species name from the directory path
+        # Assuming species name is the first level subdirectory after the root directory
+        species = os.path.relpath(dirpath, root_dir).split(os.sep)[0]
+        species_counts[species] += num_images
 
-            # Go through the individual folders inside each species folder
-            for individual in os.listdir(species_path):
-                individual_path = os.path.join(species_path, individual)
-
-                if os.path.isdir(individual_path):
-                    # Count all files in the individual folder
-                    image_count += len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
-                    image_count -= 1
-
-            species_counts[species] = image_count
-            total_count += image_count
-    print("Total images (from ALL species): ", total_count)
     return species_counts
 
 def plot_image_counts_species(species_counts):
@@ -61,7 +53,7 @@ def count_images_in_individuals(root_dir, species):
                     if os.path.isdir(individual_path):
                         # Count all files in the individual folder
                         image_count = len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
-
+                        image_count -= 1  # All paths have an additional .DS_Store file that should not be included in the count
                         # Use the individual folder name as a key, appending the species name to avoid name conflicts
                         individual_name = f"{individual}"
                         individual_counts[individual_name] = image_count
@@ -75,7 +67,7 @@ def count_images_in_individuals(root_dir, species):
         if os.path.isdir(individual_path):
             # Count all files in the individual folder
             image_count = len([f for f in os.listdir(individual_path) if os.path.isfile(os.path.join(individual_path, f))])
-
+            image_count -= 1  # All paths have an additional .DS_Store file that should not be included in the count
             # Use the individual folder name as a key, appending the species name to avoid name conflicts
             individual_name = f"{individual}"
             individual_counts[individual_name] = image_count
@@ -156,17 +148,28 @@ def plot_species_averages(species_averages):
     plt.tight_layout()
     plt.show()
 
+def count_total_images(root_dir, extensions=('.png', '.jpg', '.jpeg')):
+    total_images = 0
+
+    # Walk through the directory structure
+    for dirpath, _, filenames in os.walk(root_dir):
+        # Filter and count image files based on extensions
+        image_files = [f for f in filenames if f.lower().endswith(extensions)]
+        total_images += len(image_files)
+
+    return total_images
+
 # Main script
 if __name__ == "__main__":
     # Set the root directory path here
     root_directory = 'Datasets/AFD/'
-
+    print(f"Total images: {count_total_images(root_directory)}")
     # Number of images per species ------------------------------------
-    # species_counts = count_images_in_species(root_directory)
-    # plot_image_counts_species(species_counts)
+    species_counts = count_images_in_species(root_directory)
+    plot_image_counts_species(species_counts)
 
     # Number of images per individual --------------------------------
-    plot_image_counts_individuals("Rhinopithecus roxellanae")
+    # plot_image_counts_individuals("All species")
 
     # Average number of images per individual, grouped with the x-axis being each species
     # species_averages = calculate_average_images_per_individual(root_directory)

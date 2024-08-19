@@ -12,7 +12,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 TB_Utils.reset_directory()  # Clear the previous TensorBoard log directory
 
-dir = (Train_Models.dataset_dict["CZoo"])[0]  # The root of the directory to perform image augmentations
+dir = (Train_Models.dataset_dict["AFD Golden"])[0]  # The root of the directory to perform image augmentations
 aug_file = "augmented"  # The name of the file in each subdirectory where the augmented images will be stored
 
 
@@ -89,6 +89,6 @@ def augment():
 
 
 if __name__ == "__main__":
-    # reset_augmented_folders()
+    reset_augmented_folders()
     # show_sample_augmentations()
-    augment()
+    # augment()

@@ -119,7 +119,7 @@ def create_model(model_name, learning_rate, num_classes, optimizer, metric):
     model.add(keras.layers.Dense(num_classes, activation='softmax'))
 
     model.compile(loss='sparse_categorical_crossentropy',
-                  optimizer=optimizer(learning_rate=learning_rate),
+                  optimizer=optimizer,
                   metrics=metric)
     return model
 
