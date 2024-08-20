@@ -20,17 +20,45 @@ dataset_dict = {
 }
 
 # Model parameters--------------------------------------------------------------------------------------------
-dataset = "AFD"
+dataset = "CZoo"
 directory, num_classes = dataset_dict[dataset]
-batch_size = 32
-epochs = 30
+batch_size = 16
+epochs = 60
 validation_split = 0.1
-learning_rate = 0.001
+learning_rate = 0.0001
 optimizer = keras.optimizers.legacy.Adam
 loss = keras.losses.SparseCategoricalCrossentropy()
 metrics = ['accuracy']
 # --------------------------------------------------------------------------------------------------------------
 
+def train_all_top_layers():
+    transfer_model = "InceptionV3"
+    # Preprocess the data based on what transfer model is being used
+    train, validate = models.preprocess_data(transfer_model, train_ds, validation_ds)
+
+    for i in range(8):
+        model = models.create_model_with_top_layers(transfer_model,
+                                                  top_architectue=i,
+                                                  learning_rate=learning_rate,
+                                                  num_classes=num_classes,
+                                                  optimizer=optimizer(learning_rate=learning_rate),
+                                                  metric=metrics)
+
+        # Set up the training cycle information to be recorded in results.csv
+        record_name = ("Architecture: " + str(i) + ", " + optimizer()._name + ", lr: " + str(learning_rate) +
+                       ", batch size: " + str(batch_size))
+        record_data = {'learning_rate': learning_rate}
+
+        print(f"Train model {i}")
+        # Train the model
+        models.train_model(model,
+                           train_ds=train,
+                           validation_ds=validate,
+                           batch_size=batch_size,
+                           epochs=epochs,
+                           verbose=1,
+                           record_name=record_name,
+                           record_data=record_data)
 
 def train():
     transfer_model = "InceptionV3"
@@ -47,7 +75,7 @@ def train():
     print("Train ", transfer_model)
 
     # Set up the training cycle information to be recorded in results.csv
-    record_name = transfer_model
+    record_name = transfer_model + ", " + optimizer()._name + ", lr: " + str(learning_rate) + ", batch size: " + str(batch_size)
     record_data = {'learning_rate': learning_rate}
 
     # Train the model
@@ -138,6 +166,6 @@ if __name__ == "__main__":
     # Load and normalize the dataset
     train_ds, validation_ds = models.load_data(directory, batch_size, validation_split)
 
-
     # grid_search()
-    #train()
+    # train()
+    train_all_top_layers()

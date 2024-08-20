@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import KFold
+
+import TopLayers
 import TensorBoard_Utils as utils
 import Callbacks
 from keras.applications import (VGG16, ResNet50, InceptionV3, InceptionResNetV2, MobileNetV2, DenseNet201, Xception)
@@ -123,6 +125,15 @@ def create_model(model_name, learning_rate, num_classes, optimizer, metric):
                   metrics=metric)
     return model
 
+def create_model_with_top_layers(model_name, top_architectue, learning_rate, num_classes, optimizer, metric):
+    model = Sequential()
+    model.add(get_transfer_model(model_name))
+    model.add(TopLayers.get_top_layers(top_architectue, num_classes))
+
+    model.compile(loss='sparse_categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=metric)
+    return model
 
 def train_model(model, train_ds, validation_ds, batch_size, epochs, verbose, record_name, record_data):
     # Prepare the csv_logger to save model metrics to a file
